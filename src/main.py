@@ -1,7 +1,7 @@
 import os
 
 from copystatic import copy_files_recursive
-from markdown_to_html import generate_page
+from markdown_to_html import generate_pages_recursive
 
 
 def main():
@@ -12,11 +12,7 @@ def main():
     template_path = os.path.join(project_root, "template.html")
 
     copy_files_recursive(static_dir, public_dir)
-    generate_page(
-        os.path.join(content_dir, "index.md"),
-        template_path,
-        os.path.join(public_dir, "index.html"),
-    )
+    generate_pages_recursive(content_dir, template_path, public_dir)
 
 
 if __name__ == "__main__":
