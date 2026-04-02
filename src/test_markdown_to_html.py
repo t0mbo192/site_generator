@@ -158,7 +158,49 @@ This is a paragraph with **bold** text.
             "<html><head><title>Post</title></head><body><div><h1>Post</h1><p>Nested content.</p></div></body></html>",
         )
 
-    def test_site_generation_copies_images_and_rewrites_nested_image_paths(self):
+    def test_generate_page_rewrites_root_relative_urls_with_basepath(self):
+        markdown = """# Post
+
+![Hero](/images/hero.png)
+
+[Home](/)
+"""
+        template = """<html><head><link href="/index.css" rel="stylesheet" /><title>{{ Title }}</title></head><body>{{ Content }}</body></html>"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from_path = os.path.join(tmpdir, "content", "blog", "post", "index.md")
+            template_path = os.path.join(tmpdir, "template.html")
+            dest_path = os.path.join(tmpdir, "docs", "blog", "post", "index.html")
+
+            os.makedirs(os.path.dirname(from_path), exist_ok=True)
+
+            with open(from_path, "w", encoding="utf-8") as markdown_file:
+                markdown_file.write(markdown)
+
+            with open(template_path, "w", encoding="utf-8") as template_file:
+                template_file.write(template)
+
+            generate_page(
+                from_path,
+                template_path,
+                dest_path,
+                "/site_generator/",
+            )
+
+            with open(dest_path, encoding="utf-8") as dest_file:
+                generated = dest_file.read()
+
+        self.assertIn(
+            'href="/site_generator/index.css"',
+            generated,
+        )
+        self.assertIn(
+            '<img src="/site_generator/images/hero.png" alt="Hero"></img>',
+            generated,
+        )
+        self.assertIn('href="/site_generator/"', generated)
+
+    def test_site_generation_copies_images_and_uses_default_root_basepath(self):
         template = """<html><head><link href="/index.css" rel="stylesheet" /><title>{{ Title }}</title></head><body>{{ Content }}</body></html>"""
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -201,12 +243,12 @@ This is a paragraph with **bold** text.
             with open(generated_html_path, encoding="utf-8") as generated_html_file:
                 generated_html = generated_html_file.read()
 
-            self.assertIn('href="../../index.css"', generated_html)
+            self.assertIn('href="/index.css"', generated_html)
             self.assertIn(
-                '<img src="../../images/hero.png" alt="Hero"></img>',
+                '<img src="/images/hero.png" alt="Hero"></img>',
                 generated_html,
             )
-            self.assertIn('href="../.."', generated_html)
+            self.assertIn('href="/"', generated_html)
 
     if __name__ == "__main__":
         unittest.main()

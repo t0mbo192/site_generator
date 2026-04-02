@@ -1,5 +1,4 @@
 import os
-import re
 
 from htmlnode import ParentNode
 from inline_markdown import text_to_textnodes
@@ -102,29 +101,7 @@ def extract_title(markdown):
     raise ValueError("No title found in markdown")
 
 
-def _rewrite_root_relative_urls(html, dest_path, site_root_dir):
-    page_dir = os.path.dirname(dest_path) or "."
-    relative_site_root = os.path.relpath(site_root_dir, page_dir).replace(
-        os.sep, "/"
-    )
-
-    def replace_url(match):
-        attribute = match.group(1)
-        resource_path = match.group(2)
-
-        if not resource_path:
-            rewritten_path = relative_site_root
-        elif relative_site_root == ".":
-            rewritten_path = resource_path
-        else:
-            rewritten_path = f"{relative_site_root}/{resource_path}"
-
-        return f'{attribute}="{rewritten_path}"'
-
-    return re.sub(r'(href|src)="/([^"]*)"', replace_url, html)
-
-
-def generate_page(from_path, template_path, dest_path, site_root_dir=None):
+def generate_page(from_path, template_path, dest_path, basepath="/"):
     print(
         f"Generating page from {from_path} to {dest_path} using {template_path}"
     )
@@ -140,9 +117,8 @@ def generate_page(from_path, template_path, dest_path, site_root_dir=None):
     full_html = template.replace("{{ Title }}", title).replace(
         "{{ Content }}", html_content
     )
-    full_html = _rewrite_root_relative_urls(
-        full_html, dest_path, site_root_dir or os.path.dirname(dest_path)
-    )
+    full_html = full_html.replace('href="/', f'href="{basepath}')
+    full_html = full_html.replace('src="/', f'src="{basepath}')
 
     dest_dir = os.path.dirname(dest_path)
     if dest_dir:
@@ -153,10 +129,8 @@ def generate_page(from_path, template_path, dest_path, site_root_dir=None):
 
 
 def generate_pages_recursive(
-    dir_path_content, template_path, dest_dir_path, site_root_dir=None
+    dir_path_content, template_path, dest_dir_path, basepath="/"
 ):
-    site_root_dir = site_root_dir or dest_dir_path
-
     for entry in sorted(os.listdir(dir_path_content)):
         source_path = os.path.join(dir_path_content, entry)
         destination_path = os.path.join(dest_dir_path, entry)
@@ -166,7 +140,7 @@ def generate_pages_recursive(
                 source_path,
                 template_path,
                 destination_path,
-                site_root_dir,
+                basepath,
             )
             continue
 
@@ -174,6 +148,4 @@ def generate_pages_recursive(
             continue
 
         html_dest_path = os.path.splitext(destination_path)[0] + ".html"
-        generate_page(
-            source_path, template_path, html_dest_path, site_root_dir
-        )
+        generate_page(source_path, template_path, html_dest_path, basepath)
